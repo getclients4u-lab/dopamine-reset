@@ -1,7 +1,7 @@
 # Social Media Launch Pack — The 7-Day Dopamine Reset
 
 **Goal:** Awareness → curiosity → click to landing page
-**Landing:** https://dopamine-reset.vercel.app/
+**Landing:** https://dopamine-reset-theta.vercel.app/
 
 ---
 
@@ -15,7 +15,7 @@
 > The fix isn't discipline. It's chemistry.
 >
 > 7 days. One framework. 3 hours back a day.
-> → https://dopamine-reset.vercel.app/
+> → https://dopamine-reset-theta.vercel.app/
 
 ### Post 2 — The Stat (Day 2)
 > The average person checks their phone 96 times a day.
@@ -24,7 +24,7 @@
 >
 > Day 1 of my dopamine reset: kill the notifications at the source. 60–90 min back. Same day.
 >
-> Full protocol → https://dopamine-reset.vercel.app/
+> Full protocol → https://dopamine-reset-theta.vercel.app/
 
 ### Post 3 — The Mechanism (Day 3)
 > Detoxes fail because they run on willpower.
@@ -36,7 +36,7 @@
 > O — Outsource the urge (Replacement Loops)
 > P — Protect the gains (Focus Fortress)
 >
-> 7 days, $27 → https://dopamine-reset.vercel.app/
+> 7 days, $27 → https://dopamine-reset-theta.vercel.app/
 
 ### Post 4 — The Transformation (Day 4)
 > Day 1: scroll autopilot. Brain fog at 10am. Can't start deep work.
@@ -45,7 +45,7 @@
 >
 > Same brain. New chemistry.
 >
-> The 7-Day Dopamine Reset → https://dopamine-reset.vercel.app/
+> The 7-Day Dopamine Reset → https://dopamine-reset-theta.vercel.app/
 
 ### Post 5 — The Close (Day 5)
 > You've tried "just be more disciplined." It lasted 48 hours.
@@ -53,7 +53,7 @@
 > Try a system instead. 7 days. STOP Framework. 30-day guarantee.
 >
 > If your focus is worth $27, it's worth 7 days.
-> → https://dopamine-reset.vercel.app/
+> → https://dopamine-reset-theta.vercel.app/
 
 ---
 
@@ -98,7 +98,7 @@ Voiceover: "Step one: kill the notifications at the source. 60 minutes back, sam
 >
 > The fix: a 7-day protocol that strips triggers, maps your hijackers, and installs replacement loops — so focus becomes the default, not the struggle.
 >
-> Full breakdown here: https://dopamine-reset.vercel.app/
+> Full breakdown here: https://dopamine-reset-theta.vercel.app/
 >
 > #focus #productivity #digitaldetox #mentalhealth
 

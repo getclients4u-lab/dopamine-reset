@@ -36,7 +36,7 @@ By Day 7? Three extra hours a day. A quiet mind. Focus that holds.
 
 And it's yours for **$27** — with a 30-day money-back guarantee.
 
-[Start My Reset — $27](https://dopamine-reset.vercel.app/)
+[Start My Reset — $27](https://dopamine-reset-theta.vercel.app/)
 
 You've tried discipline. Try a system instead.
 
@@ -74,7 +74,7 @@ No single step is hard. Together, they're unstoppable.
 
 Today is Day 2 of the launch — and the Reset is still **$27** (regular $47) with the 30-day guarantee.
 
-[Start My Reset — $27](https://dopamine-reset.vercel.app/)
+[Start My Reset — $27](https://dopamine-reset-theta.vercel.app/)
 
 The system works whether you believe in it or not. That's the point.
 
@@ -109,7 +109,7 @@ And the guarantee means you can't lose: follow the protocol, and if you don't fe
 
 The only thing you can lose is the fog.
 
-[Start My Reset — $27 (ends Friday)](https://dopamine-reset.vercel.app/)
+[Start My Reset — $27 (ends Friday)](https://dopamine-reset-theta.vercel.app/)
 
 In 7 days, you could have your brain back.
 

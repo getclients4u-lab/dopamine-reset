@@ -18,7 +18,7 @@ A science-backed, 7-day protocol (the **STOP Framework**: Strip → Track → Ou
 | `slide_images/` | 149 individual slides (PNG, 1920×1080) |
 
 ## Live
-- Landing: https://dopamine-reset.vercel.app/
+- Landing: https://dopamine-reset-theta.vercel.app/
 - Built with: herosection · master-copywriter · salespage · inbox-copywriter · vsl skills
 
 ## Social
