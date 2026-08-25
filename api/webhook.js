@@ -1,5 +1,6 @@
 // Vercel serverless webhook for Stripe payment events (dopamine-reset)
 // ESM only. bodyParser:false REQUIRED (Vercel's JSON parsing breaks Stripe HMAC).
+// Pattern proven on habitbloom (2026-08-17 daily build).
 import crypto from 'crypto';
 
 export const config = { api: { bodyParser: false } };
@@ -10,50 +11,69 @@ const GH_OWNER = process.env.GH_OWNER || 'getclients4u-lab';
 const GH_REPO = process.env.GH_REPO || 'dopamine-reset';
 const MAIL_FROM = process.env.DOPAMINE_MAIL_FROM || 'gentledesk632@agentmail.to';
 const AGENTMAIL_KEY = process.env.AGENTMAIL_API_KEY || '';
+const BUYERS_FILE = 'buyers.json';
 
-async function readRaw(req) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  return Buffer.concat(chunks);
+// Read raw request body as a Buffer (so HMAC over raw bytes works)
+function readRawBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+function verifyStripe(payloadBuf, sigHeader) {
+  if (!WH_SECRET || !sigHeader) return false;
+  try {
+    const parts = {};
+    sigHeader.split(',').forEach(p => { const [k, ...v] = p.split('='); parts[k] = v.join('='); });
+    const ts = parts['t'], sig = parts['v1'];
+    if (!ts || !sig) return false;
+    const expected = crypto.createHmac('sha256', WH_SECRET).update(`${ts}.${payloadBuf}`).digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+  } catch (e) { return false; }
 }
 
 async function ghGet(path) {
-  const r = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/${path}`, {
-    headers: { Authorization: `token ${GH_TOKEN}`, Accept: 'application/vnd.github+json' }
-  });
-  if (!r.ok) return null;
-  return r.json();
+  const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,
+    { headers: { Authorization: `token ${GH_TOKEN}`, Accept: 'application/vnd.github.v3+json' } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('GH GET ' + res.status);
+  return res.json();
 }
 
-async function ghPut(path, body, sha) {
-  const r = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/${path}`, {
+async function ghPut(path, content, sha, message) {
+  const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`, {
     method: 'PUT',
-    headers: { Authorization: `token ${GH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: `buyer: ${body.customer_email || 'unknown'}`, content: Buffer.from(JSON.stringify(body.data, null, 2)).toString('base64'), sha })
+    headers: { Authorization: `token ${GH_TOKEN}`, 'Content-Type': 'application/json', Accept: 'application/vnd.github.v3+json' },
+    body: JSON.stringify({ message, content: Buffer.from(content).toString('base64'), sha }),
   });
-  return r.ok;
+  return res.ok;
 }
 
-async function sendConfirmation(email, name) {
-  if (!AGENTMAIL_KEY) return { ok: false, why: 'no agentmail key' };
-  // ensure allow-listed first
+async function addToAllowList(email) {
   try {
     await fetch('https://api.agentmail.to/v0/lists/send/allow', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${AGENTMAIL_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry: email })
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AGENTMAIL_KEY}` },
+      body: JSON.stringify({ entry: email }),
     });
-  } catch (e) {}
-  const body = {
-    to: email,
-    from: MAIL_FROM,
-    subject: 'Your 7-Day Dopamine Reset — access inside ✅',
-    text: `Hi ${name || 'there'},
+  } catch (e) { /* best effort */ }
+}
 
-Thank you! Your order for The 7-Day Dopamine Reset is confirmed.
+async function sendEmail(buyer) {
+  if (!AGENTMAIL_KEY || !MAIL_FROM) return false;
+  await addToAllowList(buyer.email);
+  const body =
+`You're In! Your 7-Day Dopamine Reset — access inside ✅
+
+Hi ${buyer.name || 'there'},
+
+Thank you! Your order is confirmed.
 
 DOWNLOAD YOUR RESET:
-→ https://dopamine-reset-theta.vercel.app/download
+→ https://dopamine-reset-theta.vercel.app/
 
 WHAT'S INSIDE:
 • The 7-Day Reset Guide (STOP Framework)
@@ -68,62 +88,56 @@ START TODAY:
 2. Print your Trigger Map
 3. Day 2: map your hijackers
 
-30-day money-back guarantee — if it doesn't work, full refund, keep the guides.
+30-day, no-questions-asked guarantee — keep everything either way.
 
 Your brain will thank you in 7 days.
-— The Dopamine Reset Team`
-  };
-  const r = await fetch('https://api.agentmail.to/v0/messages', {
+— The Dopamine Reset Team`;
+  const res = await fetch(`https://api.agentmail.to/v0/inboxes/${MAIL_FROM}/messages/send`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${AGENTMAIL_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AGENTMAIL_KEY}` },
+    body: JSON.stringify({ to: [buyer.email], subject: "You're In! The 7-Day Dopamine Reset", text: body }),
   });
-  return { ok: r.ok, status: r.status };
+  return res.ok;
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-  const raw = await readRaw(req);
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method not allowed' });
+  const raw = await readRawBody(req);
   const sig = req.headers['stripe-signature'] || '';
+  if (!verifyStripe(raw, sig)) return res.status(400).json({ error: 'invalid signature' });
+
   let event;
-  try {
-    event = JSON.parse(raw);
-  } catch (e) {
-    return res.status(400).json({ error: 'bad json' });
-  }
-  // HMAC verify (Stripe v2 style timestamped)
-  try {
-    const parts = sig.split(',');
-    const tsPart = parts.find(p => p.startsWith('t='));
-    const v1Part = parts.find(p => p.startsWith('v1='));
-    if (!tsPart || !v1Part) throw new Error('bad sig format');
-    const t = tsPart.slice(2);
-    const expected = crypto.createHmac('sha256', WH_SECRET).update(`${t}.${raw}`).digest('hex');
-    if (expected !== v1Part.slice(3)) throw new Error('sig mismatch');
-  } catch (e) {
-    return res.status(400).json({ error: 'invalid signature' });
-  }
+  try { event = JSON.parse(raw.toString('utf8')); } catch (e) { return res.status(400).json({ error: 'bad json' }); }
 
   if (event.type === 'checkout.session.completed') {
     const s = event.data.object;
-    const email = s.customer_details?.email || s.customer_email || '';
-    const name = s.customer_details?.name || '';
-    const amount = (s.amount_total || 0) / 100;
     const buyer = {
-      id: s.id, email, name, amount, currency: s.currency || 'usd',
-      product: 'dopamine-reset', ts: new Date().toISOString()
+      id: s.id,
+      email: (s.customer_details && s.customer_details.email) || s.customer_email || '',
+      name: (s.customer_details && s.customer_details.name) || '',
+      amount: (s.amount_total || 0) / 100,
+      currency: s.currency || 'usd',
+      product: 'dopamine-reset',
+      ts: new Date().toISOString(),
     };
-    // store to buyers.json (append)
-    let data = { buyers: [] };
-    const existing = await ghGet('buyers.json');
-    if (existing) {
-      try { data = JSON.parse(Buffer.from(existing.content, 'base64').toString()); } catch (e) {}
-    }
-    if (!Array.isArray(data.buyers)) data.buyers = [];
-    data.buyers.push(buyer);
-    const saved = await ghPut('buyers.json', { data, customer_email: email }, existing?.sha);
-    const mail = await sendConfirmation(email, name);
-    return res.status(200).json({ received: true, stored: saved ? 1 : 0, emailed: mail.ok });
+    if (!buyer.email) return res.status(200).json({ received: true, error: 'no email' });
+
+    // Store to buyers.json (GitHub primary + append)
+    let buyers = [];
+    let stored = false, emailed = false;
+    try {
+      const existing = await ghGet(BUYERS_FILE);
+      if (existing) {
+        try { buyers = JSON.parse(Buffer.from(existing.content, 'base64').toString('utf8')); } catch (e) { buyers = []; }
+        if (!Array.isArray(buyers)) buyers = [];
+      }
+      buyers.push(buyer);
+      stored = await ghPut(BUYERS_FILE, JSON.stringify(buyers, null, 2), existing ? existing.sha : undefined,
+        `buyer: ${buyer.email}`);
+    } catch (e) { stored = false; }
+
+    emailed = await sendEmail(buyer);
+    return res.status(200).json({ received: true, stored: stored ? 1 : 0, emailed });
   }
   return res.status(200).json({ received: true, ignored: event.type });
 }
